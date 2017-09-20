@@ -1,0 +1,311 @@
+/* 
+ * The Graph class is a holistic collection of vertices. It contains methods
+ * to add connections, as well as check for specific criteria related to
+ * the resolving rules.
+ */
+
+package geometry;
+
+import algebra.*;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Set;
+import java.util.HashSet;
+
+public class Graph {
+    private List<Vertex> vertices;
+    private Rational<Polynomial> c;
+
+    // This constructor creates an empty new graph.    
+    public Graph() {
+        this.vertices = new LinkedList<>();      
+        this.c = new Rational<Polynomial>(new Polynomial(Rational.ONE), new Polynomial(Rational.ONE));
+    }
+
+    // This constructor creates a new graph that is a copy of another graph.    
+    public Graph(Graph gr) {
+        this.vertices = new LinkedList<>();
+        
+        for (int i = 0; i < gr.getVertices().size(); i++) {
+            this.vertices.add(gr.getVertices().get(i));
+        }
+        
+        Polynomial t = new Polynomial();
+        Polynomial b = new Polynomial();
+        
+        for (Monomial m : gr.getCoefficient().getNumerator().getMonomials()) {
+            int deg = m.getDegree();
+            Field c = m.getCoefficient();
+            t.addMonomial(deg, c);
+        }
+        
+        for (Monomial m : gr.getCoefficient().getDenominator().getMonomials()) {
+            int deg = m.getDegree();
+            Field c = m.getCoefficient();
+            b.addMonomial(deg, c);
+        }
+        
+        Rational<Polynomial> coeff = new Rational(t, b);
+        
+        this.c = coeff;
+    }
+
+    // Getters, setters.    
+    public List<Vertex> getVertices() {
+        return this.vertices;
+    }
+    
+    public Rational<Polynomial> getCoefficient() {
+        return this.c;
+    }
+    
+    public void setCoefficient(Rational<Polynomial> c) {
+        this.c = c;
+    }
+
+    // The string presentation is designed like an instruction on how to draw the graph.    
+    @Override
+    public String toString() {
+        String graph = this.c + "\n" + this.vertices.size() + " vertices\n";
+        
+        for (Vertex v : this.vertices) {
+            int j = this.getIndex(v) + 1;
+            graph += "Vertex " + j + " :\n";
+            
+            if (v.getQuarks().size() > 0) {
+                graph += " Quarks to vertices...\n";
+            
+                for (Vertex u : v.getQuarks()) {
+                    if (this.getIndex(u) != -1) {
+                        int i = this.getIndex(u) + 1;
+                        graph += "  " + i + "\n";
+                    }
+                }
+            }
+            
+            if (v.getAntiQuarks().size() > 0) {
+                graph += " Anti-quarks to vertices...\n";
+            
+                for (Vertex u : v.getAntiQuarks()) {
+                    if (this.getIndex(u) != -1) {
+                        int i = this.getIndex(u) + 1;
+                        graph += "  " + i + "\n";
+                    }
+                }
+            }
+            
+            if (v.getGluons().size() > 0) {
+                graph += " Gluons to vertices...\n";
+            
+                for (Vertex u : v.getGluons()) {
+                    if (this.getIndex(u) != -1) {
+                        int i = this.getIndex(u) + 1;
+                        graph += "  " + i + "\n";
+                    }
+                }
+            }
+        }
+        
+        return graph;
+    }
+
+    // Getters that enable the use of indices to represent the vertices in the graph.    
+    public int getIndex(Vertex v) {
+        return this.vertices.indexOf(v);
+    }
+    
+    public Vertex getVertex(int i) {
+        return this.vertices.get(i);
+    }
+
+    // Adding vertices.    
+    public void addVertex(Vertex... v) {
+        for (int i = 0; i < v.length; i++) {
+            this.vertices.add(v[i]);
+        }
+    }
+    
+    public void addVertices(List<Vertex> v) {
+        this.vertices.addAll(v);
+    }
+
+    // Usually empty vertices will be added, so a method to add many at once is convenient.    
+    public void addNewVertex() {
+        this.addVertex(new Vertex());
+    }
+    
+    public void addNewVertices(int i) {
+        for (int j = 0; j < i; j++) {
+            this.addNewVertex();
+        }
+    }
+
+    // Creating a connection from one vertex to another necessiates creating the opposite connection as well.    
+    public void addQuark(int i, int j) {
+        this.getVertex(i).addQuark(this.getVertex(j));
+        this.getVertex(j).addAntiQuark(this.getVertex(i));
+    }
+    
+    public void addQuark(Vertex v, Vertex u) {
+        if (this.vertices.contains(v) && this.vertices.contains(u)) {
+            v.addQuark(u);
+            u.addAntiQuark(v);
+        }
+    }
+    
+    public void addAntiQuark(int i, int j) {
+        this.addQuark(j, i);
+    }
+    
+    public void addAntiQuark(Vertex v, Vertex u) {
+        this.addQuark(u, v);
+    }
+    
+    public void addGluon(int i, int j) {
+        this.getVertex(i).addGluon(this.getVertex(j));
+        this.getVertex(j).addGluon(this.getVertex(i));
+    }
+    
+    public void addGluon(Vertex v, Vertex u) {
+        if (this.vertices.contains(v) && this.vertices.contains(u)) {
+            v.addGluon(u);
+            u.addGluon(v);
+        }
+    }
+
+    // Removing a vertex and all connections to it.    
+    public void removeVertex(Vertex v) {
+        for (Vertex u : v.getConnections()) {
+            u.removeAll(v);
+            v.removeAll(u);
+        }
+        
+        this.vertices.remove(v);
+    }
+
+    // This method returns the indices of all vertices connected to a certain vertex.    
+    public Set<Integer> connections(Vertex v) {
+        Set<Integer> c = new HashSet<>();
+        
+        for (Vertex u : v.getConnections()) {
+            c.add(this.getIndex(u));
+        }
+        
+        return c;
+    }
+
+    // Checks whether the vertex has a trivial loop.    
+    public boolean isLoop(Vertex v) {
+        if (v.getConnections().size() != 2) {
+            return false;
+        } else if (v.numberOfQuarks() != v.numberOfAntiQuarks()) {
+            return false;
+        } else if (this.connections(v).size() != 1) {
+            return false;
+        } else if (!v.getConnections().contains(v)) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    // Checks if a vertex is simply an intermediate point on an edge between two vertices.    
+    public boolean isRedundant(Vertex v) {
+        if (v.getConnections().size() != 2) {
+            return false;
+        }
+        
+        if (v.numberOfQuarks() != v.numberOfAntiQuarks()) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    // Checks if a vertex may be reduced.    
+    public boolean isResolvable(Vertex v) {
+        if (v.getConnections().size() != 3) {
+            return false;
+        }
+        
+        if (v.numberOfQuarks() != v.numberOfAntiQuarks()) {
+            return false;
+        }
+        
+        Vertex u = v.getGluons().get(0);
+        if (u.getConnections().size() != 3) {
+            return false;
+        }
+        
+        if (u.numberOfQuarks() != u.numberOfAntiQuarks()) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    public boolean isZeroLoop(Vertex v) {
+        if (v.getConnections().size() != 3) {
+            return false;
+        }
+        
+        if (v.numberOfQuarks() != v.numberOfAntiQuarks()) {
+            return false;
+        }
+        
+        if (this.isRedundant(v.getQuarks().get(0))) {
+            return true;
+        }
+        
+        if (v.getQuarks().get(0).equals(v)) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    public boolean isReducibleLoop(Vertex v) {
+        if (v.getConnections().size() != 3) {
+            return false;
+        }
+        
+        if (v.numberOfQuarks() != v.numberOfAntiQuarks()) {
+            return false;
+        }
+        
+        if (!v.getQuarks().get(0).equals(v.getAntiQuarks().get(0))) {
+            return false;
+        }
+        
+        if (v.getQuarks().get(0).getConnections().size() != 3) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    public boolean isTripleGluon(Vertex v) {
+    	if (v.getConnections().size() != 3) {
+    		return false;
+    	}
+    	
+    	if (v.numberOfGluons() != 3) {
+    		return false;
+    	}
+    	
+    	return true;
+    }
+    
+    public void multiply(Field f) {
+        Rational<Polynomial> prod = (Rational<Polynomial>) this.c.multiply(f);
+        this.c = prod;
+    }
+    
+    public void divide(Field f) {
+        if (f.isZero()) {
+            throw new ArithmeticException();
+        }
+        
+        this.multiply(f.multInvert());
+    }
+}
