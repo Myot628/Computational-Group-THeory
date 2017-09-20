@@ -1,0 +1,134 @@
+/*
+ * The Vertex class records all vertices that a particular vertex is connected
+ * to, and the type of connection. There are methods to add and remove connections,
+ * as well as count their number.
+ */
+
+package geometry;
+
+import java.util.List;
+import java.util.LinkedList;
+
+
+public class Vertex {
+    private List<Vertex> q;
+    private List<Vertex> a;
+    private List<Vertex> g;
+    
+    // The construcotr initializes all the variable lists.    
+    public Vertex() {
+        this.q = new LinkedList<>();
+        this.a = new LinkedList<>();
+        this.g = new LinkedList<>();
+    }
+    
+    public Vertex(Vertex v) {
+        this.q = v.getQuarks();
+        this.a = v.getAntiQuarks();
+        this.g = v.getGluons();
+    }
+
+    // Different getters.    
+    public List<Vertex> getQuarks() {
+        return this.q;
+    }
+    
+    public List<Vertex> getAntiQuarks() {
+        return this.a;
+    }
+    
+    public List<Vertex> getGluons() {
+        return this.g;
+    }
+    
+    public List<Vertex> getConnections() {
+        List<Vertex> c = new LinkedList<>();
+        
+        c.addAll(this.getQuarks());
+        c.addAll(this.getAntiQuarks());
+        c.addAll(this.getGluons());
+        
+        return c;
+    }
+
+    // Adding connections to the lists.    
+    public void addQuark(Vertex v) {
+        this.q.add(v);
+    }
+    
+    public void addAntiQuark(Vertex v) {
+        this.a.add(v);
+    }
+    
+    public void addGluon(Vertex v) {
+        this.g.add(v);
+    }
+    
+    public void addQuarks(List<Vertex> list) {
+        for (Vertex u : list) {
+            this.addQuark(u);
+        }
+    }
+    
+    public void addAntiQuarks(List<Vertex> list) {
+        for (Vertex u : list) {
+            this.addAntiQuark(u);
+        }
+    }
+    
+    public void addGluons(List<Vertex> list) {
+        for (Vertex u : list) {
+            this.addGluon(u);
+        }
+    }
+    
+    // Removing connections from the lists.    
+    public void removeQuarks(Vertex v) {
+        if (this.q.contains(v)) {
+            this.q.remove(v);
+        }
+    }
+    
+    public void removeAntiQuarks(Vertex v) {
+        if (this.a.contains(v)) {
+            this.a.remove(v);
+        }
+    }
+    
+    public void removeGluons(Vertex v) {
+        if (this.g.contains(v)) {
+            this.g.remove(v);
+        }
+    }
+    
+    public void removeAll(Vertex v) {
+        this.removeQuarks(v);
+        this.removeAntiQuarks(v);
+        this.removeGluons(v);
+    }
+
+    // Counting the number of different connections.    
+    public int numberOfQuarks() {
+        if (this.q == null) {
+            return 0;
+        }
+        
+        return this.q.size();
+    }
+    
+    public int numberOfAntiQuarks() {
+        if (this.a == null) {
+            return 0;
+        }
+        
+        return this.a.size();
+    }
+    
+    public int numberOfGluons() {
+        if (this.g == null) {
+            return 0;
+        }
+        
+        return this.g.size();
+    }
+}
