@@ -1,0 +1,17 @@
+// The field interface is required to construct rationals of Euclidean domains.
+
+package algebra;
+
+public interface Field {
+    public Field add(Field f);
+    public Field addInvert();
+    public Field subtract(Field f);
+    
+    public Field multiply(Field f);
+    public Field multInvert();
+    public Field divide(Field f);
+    
+    public boolean isZero();
+    public boolean isPositive();
+    public boolean isNegative();
+}
