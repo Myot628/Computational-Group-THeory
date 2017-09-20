@@ -1,0 +1,101 @@
+/*
+ * This class provides a framework for creating objects that satisfy the
+ * properties of Euclidean domains. This requires a method for e.g. finding gcd's
+ * via the Euclidean algorithm.
+ */
+package algebra;
+
+import java.util.List;
+import java.util.LinkedList;
+import java.lang.Math;
+
+public abstract class EuclideanDomain {
+    
+    // Methods to deal with addition.
+    public abstract EuclideanDomain add(EuclideanDomain e);
+    public abstract EuclideanDomain addInvert();
+    public EuclideanDomain subtract(EuclideanDomain e) {
+        return this.add(e.addInvert());
+    }
+    
+    // Methods that deal with ordering.
+    public abstract boolean isZero();
+    public abstract EuclideanDomain unit();
+    public abstract boolean isPositive();
+    public boolean isNegative() {
+        if (this.isZero()) {
+            return false;
+        }
+        
+        if (this.isPositive()) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        
+        if (o == null) {
+            return false;
+        }
+        
+        if (this.getClass() != o.getClass()) {
+            return false;
+        }
+        
+        EuclideanDomain e = (EuclideanDomain) o;
+        return this.subtract(e).isZero();
+    }
+    public boolean isGreaterThan(EuclideanDomain e) {
+        return this.subtract(e).isPositive();
+    }
+    public boolean isLessThan(EuclideanDomain e) {
+        return this.subtract(e).isNegative();
+    }
+    
+    // Methods to deal with multiplication and division.
+    public abstract EuclideanDomain multiply(EuclideanDomain e);
+    public EuclideanDomain quotient(EuclideanDomain e) {
+    	return this.divide(e).getQuotient();
+    }
+    public EuclideanDomain remainder(EuclideanDomain e) {
+        return this.divide(e).getRemainder();
+    }
+    
+    public abstract Pair divide(EuclideanDomain e);
+    
+    public abstract EuclideanDomain modulus();
+    
+    // A method to find the gcd using the Euclidean algorithm.
+    public static EuclideanDomain gcd(EuclideanDomain d, EuclideanDomain e) {
+        if (e.isZero() || d.isZero()) {
+            throw new ArithmeticException("Gcd of a number and zero attempted");
+        }
+        
+        if (e.isNegative()) {
+            return gcd(d.addInvert(), e.addInvert());
+        }
+        
+        if (d.equals(e)) {
+            return e;
+        }
+        
+        if (d.modulus().isLessThan(e.modulus())) {
+            return gcd(e, d);
+        }
+
+        EuclideanDomain f = d.remainder(e);
+        
+        if (f.isZero()) {
+            return e;
+        }
+        
+        return gcd(e, f);
+    }
+}

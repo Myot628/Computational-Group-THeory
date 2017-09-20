@@ -1,0 +1,127 @@
+/*
+ * Monomials are required so that polynomials can be constructed as a list of
+ * monomials. The reason for this is that it would be inefficient to store
+ * degrees whose coefficients are zero: using monomials allows storing of
+ * only non-zero powers.
+ */
+package algebra;
+
+import java.util.Objects;
+
+public class Monomial implements Comparable<Monomial> {
+    private int deg;
+    private Field c;
+    
+    public Monomial(int deg, Field c) {
+        this.deg = deg;
+        this.c = c;
+    }
+    
+    public Monomial(Monomial m) {
+        this.deg = m.getDegree();
+        this.c = m.getCoefficient();
+    }
+    
+    public int getDegree() {
+        return this.deg;
+    }
+    
+    public Field getCoefficient() {
+        return c;
+    }
+    
+    public void setDegree(int deg) {
+        this.deg = deg;
+    }
+    
+    public void setCoefficient(Field c) {
+        this.c = c;
+    }
+
+    
+    public Monomial add(Monomial m) {
+        if (this.deg != m.getDegree()) {
+            return null;
+        }
+        
+        Field c = this.c.add(m.getCoefficient());
+        Monomial mono = new Monomial(this.deg, c);
+        
+        return mono;
+    }
+    
+    public Monomial inv() {
+        Field c = this.c.addInvert();
+        Monomial mono = new Monomial(this.deg, c);
+        
+        return mono;
+    }
+    
+    public Monomial subtract(Monomial m) {
+        return this.add(m.inv());
+    }
+    
+    public Monomial multiply(Monomial m) {
+    	Monomial mono = new Monomial(this);
+        int deg = mono.getDegree() + m.getDegree();
+        Field c = mono.getCoefficient().multiply(m.getCoefficient());
+        Monomial mo = new Monomial(deg, c);
+        
+        return mo;
+    }
+    
+    public Monomial divide(Monomial m) {        
+        if (this.deg < m.getDegree()) {
+            throw new IllegalArgumentException("Degree of dividing monomial is too large.");
+        }
+
+        if (m.getDegree() == -1) {
+            throw new ArithmeticException("Division by zero monomial attempted.");
+        }
+        
+        int d = this.deg - m.getDegree();
+        Field f = this.c.divide(m.getCoefficient());
+        Monomial mono = new Monomial(d, f);
+        
+        return mono;
+    }
+    
+    @Override
+    public String toString() {
+        return this.c + " n^" + this.deg;
+    }
+    
+    @Override
+    public int compareTo(Monomial m) {
+        return m.getDegree() - this.deg;
+    }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        
+        if (o == null) {
+            return false;
+        }
+        
+        if (this.getClass() != o.getClass()) {
+            return false;
+        }
+        
+        Monomial m = (Monomial) o;
+        if (this.deg != m.deg) {
+            return false;
+        }
+        
+        if (!this.c.equals(m.getCoefficient())) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    
+}

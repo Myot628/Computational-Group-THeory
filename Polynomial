@@ -1,0 +1,319 @@
+/* The Polynomial class will implement the functionality of an Euclidean domain,
+ * which means that it may be used in the Rational class. Rational polynomials
+ * are what is needed for the coefficients of the graphs.
+ */
+
+package algebra;
+
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Set;
+import java.util.Collections;
+import java.util.HashSet;
+
+public class Polynomial extends EuclideanDomain {
+    private Monomial m;
+    private Polynomial p;
+    public final static Polynomial ZERO = new Polynomial();
+    public final static Polynomial ONE = new Polynomial(Rational.ONE);
+    
+    public Polynomial() {
+        this.m = new Monomial(-1, Rational.ONE);
+        this.p = null;
+    }
+    
+    public Polynomial(Field c) {
+    	if (!c.isZero()) {
+    		this.m = new Monomial(0, c);
+    		this.p = new Polynomial();
+    		return;
+    	}
+    	
+    	this.m = new Monomial(-1, Rational.ONE);      
+    	this.p = null;
+    }
+    
+    public Polynomial(Polynomial poly) {
+        this.m = new Monomial(-1, Rational.ONE);
+        this.p = null;
+    	
+    	if (poly.isZero()) {
+    		return;
+    	}
+    	
+    	int d = poly.getLead().getDegree();
+    	Field c = poly.getLead().getCoefficient();
+    	Monomial mono = new Monomial(d, c);
+    	
+    	this.addMonomial(mono);
+    	this.p = new Polynomial(poly.getResiduum());
+    }
+    
+    public Monomial getLead() {
+        return this.m;
+    }
+    
+    public Polynomial getResiduum() {
+    	return this.p;
+    }
+    
+    public void setLead(Monomial mono) {
+    	this.m = mono;
+    }
+    
+    public int degree() {
+        return this.m.getDegree();
+    }
+    
+    public void removeLead() {
+    	if (this.isZero()) {
+    		return;
+    	}
+    	
+    	this.setLead(this.p.getLead());
+    	this.p.removeLead();    	
+    }
+    
+    public void addMonomial(Monomial mono) {
+    	if (mono == null) {
+    		return;
+    	}
+    	
+        int d = mono.getDegree();
+        
+        if (d == -1) {
+            return;
+        }
+        
+        if (d == this.degree()) {
+        	Field c = this.m.getCoefficient().add(mono.getCoefficient());
+        	
+        	if (c.isZero()) {
+        		this.removeLead();
+        		return;
+        	}
+        	
+        	this.m.setCoefficient(c);
+        	return;
+        }
+        
+        if (d < this.degree()) {
+        	this.p.addMonomial(mono);
+        	return;
+        }
+        
+        if (d > this.degree()) {
+        	if (this.isZero()) {
+        		this.p = new Polynomial();
+        		this.setLead(mono);
+        		return;
+        	}
+        	
+        	this.p.addMonomial(this.m);
+        	this.setLead(mono);
+        }
+    }
+    
+    public void addMonomial(int d, Field c) {
+        Monomial mono = new Monomial(d, c);        
+        this.addMonomial(mono);
+    }
+    
+    public Polynomial add(Monomial mono) {
+    	Polynomial sum = new Polynomial(this);
+    	sum.addMonomial(mono);
+    	return sum;
+    }
+    
+    @Override
+    public EuclideanDomain add(EuclideanDomain e) {
+    	if (!(e instanceof Polynomial)) {
+    		throw new ClassCastException("Attempted to add non-polynomial to polynomial.");
+    	}
+    	
+        Polynomial poly = (Polynomial) e;
+        Polynomial sum = new Polynomial(this);
+        
+        if (poly.isZero()) {
+        	return sum;
+        }
+        
+        sum = sum.add(poly.getLead());
+        return sum.add(poly.getResiduum());
+    }
+    
+    @Override
+    public EuclideanDomain addInvert() {
+        Polynomial inv = new Polynomial(this);    
+        
+    	if (inv.isZero()) {
+    		return inv;
+    	}
+    	   
+        Monomial mono = inv.getLead().inv();
+        EuclideanDomain in = inv.getResiduum().addInvert();
+        Polynomial i = (Polynomial) in;
+        i.addMonomial(mono);
+        return i;
+    }
+    
+    @Override
+    public boolean isZero() {
+        if (this.degree() == -1) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    @Override
+    public EuclideanDomain unit() {
+        EuclideanDomain u = new Polynomial(this.m.getCoefficient());
+        return u;
+    }
+    
+    @Override
+    public boolean isPositive() {
+        return this.m.getCoefficient().isPositive();
+    }
+    
+    public Polynomial multiply(Monomial mono) {
+    	if (mono.getDegree() == -1) {
+    		return new Polynomial();
+    	}
+    	
+    	
+    	Polynomial prod = new Polynomial();
+    	
+    	if (this.isZero()) {
+    		return new Polynomial();
+    	}
+    	
+    	Monomial m = this.getLead().multiply(mono);
+    	prod.addMonomial(m);
+    	EuclideanDomain e = this.p.multiply(mono);
+    	EuclideanDomain d = prod.add(e);
+    	
+    	return (Polynomial) d;
+    }
+    
+    @Override
+    public EuclideanDomain multiply(EuclideanDomain e) {
+    	if (!(e instanceof Polynomial)) {
+    		throw new ClassCastException("Attempted to multiply polynomial by non-polynomial.");
+    	}
+    	
+        Polynomial poly = (Polynomial) e;
+        
+        if (poly.isZero() || this.isZero()) {
+            return new Polynomial();
+        }
+
+        Polynomial prod = this.multiply(poly.getLead());
+        EuclideanDomain d = this.multiply(poly.getResiduum());
+        
+        return prod.add(d);
+    }
+    
+    public Pair divide(Monomial mono) {
+    	if (mono.getDegree() == -1) {
+    		throw new ArithmeticException("Division by zero monomial attempted.");
+    	}
+    	
+    	Polynomial q = new Polynomial();
+    	
+    	if (this.degree() == mono.getDegree()) {
+    		q.addMonomial(this.getLead().divide(mono));
+    		EuclideanDomain r = this.subtract(q.multiply(mono));
+    		return new Pair(q, r);
+    	}
+    	
+    	if (this.degree() > mono.getDegree()) {
+    		q.addMonomial(this.getLead().divide(mono));
+    		EuclideanDomain quo = q.add(this.getResiduum().divide(mono).getQuotient());
+    		q = (Polynomial) quo;
+    		EuclideanDomain r = this.subtract(q.multiply(mono));
+    		return new Pair(q, r);
+    	}
+    	
+    	return new Pair(q, new Polynomial(this));   	
+    }
+    
+    @Override
+    public Pair divide(EuclideanDomain e) {
+    	if (!(e instanceof Polynomial)) {
+    		throw new ClassCastException("Attempted to divide polynomial by non-polynomial.");
+    	}
+    	
+        if (e.isZero()) {
+            throw new ArithmeticException("Polynomial division by zero attempted.");
+        }
+        
+        Polynomial poly = (Polynomial) e;
+        
+        if (this.degree() == poly.degree()) {
+        	EuclideanDomain q = this.divide(poly.getLead()).getQuotient();
+        	EuclideanDomain r = this.subtract(e.multiply(q));
+        	return new Pair(q, r);
+        }
+        
+        if (this.degree() < poly.degree()) {
+        	Pair<Polynomial> d = new Pair(new Polynomial(), new Polynomial(this));
+        	return d;
+        }
+        
+        EuclideanDomain q = this.divide(poly.getLead()).getQuotient();
+        Polynomial r = (Polynomial) this.subtract(e.multiply(q));
+        
+        if (poly.degree() > r.degree()) {
+        	return new Pair(q, r);
+        }
+        
+        Pair d = r.divide(e);
+        
+        q = q.add(d.getQuotient());
+        r = (Polynomial) this.subtract(e.multiply(q));
+        
+        return new Pair(q, r);
+    }
+    
+    public Polynomial multiplyByField(Field f) {
+    	Polynomial poly = new Polynomial(this);
+    	
+        if (this.degree() == -1) {
+        	return poly;
+        }
+        
+        Monomial mono = poly.getLead();
+        poly.setLead(mono.multiply(new Monomial(0, f)));
+        poly.add(poly.getResiduum().multiplyByField(f));
+        return poly;
+    }
+    
+    public Polynomial divideByField(Field f) {
+        return this.multiplyByField(f.multInvert());
+    }
+    
+    @Override
+    public EuclideanDomain modulus() {
+        EuclideanDomain e = new Int(this.degree());
+        return e;
+    }
+    
+    @Override
+    public String toString() {
+        if (this.isZero()) {
+            return "0";
+        }
+        
+        String str = "";
+        
+        
+        str += this.m.toString();
+        if (!this.p.isZero()) {
+        	str += " + " + this.p.toString();
+        }
+        
+        return str;
+    }
+}

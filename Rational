@@ -1,0 +1,187 @@
+/*
+ * The Rational class is used for both rational numbers and rational polynomials:
+ * as long as the numerator and denominator are part of an Euclidean domain the
+ * same methods work.
+ */
+package algebra;
+
+public class Rational<E extends EuclideanDomain> implements Field {
+    private E n;
+    private E d;
+    
+    public final static Rational<Int> ZERO = new Rational(Int.ZERO, Int.ONE);
+    public final static Rational<Int> ONE = new Rational(Int.ONE, Int.ONE);
+    public final static Rational<Int> MINUS_ONE = new Rational(Int.MINUS_ONE, Int.ONE);
+    
+    // The constructor makes sure the numerator and the denominator are coprime and that a
+    // potential minus sign is in the numerator.
+    public Rational(E n, E d) {
+        if (d.isZero()) {
+            throw new ArithmeticException("The denominator is zero.");
+        }
+        
+        if (n.isZero()) {
+        	this.n = n;
+        	return;
+        }
+        
+        this.n = n;
+        this.d = d;
+        
+        this.simplify();
+    }
+    
+    public void simplify() {
+        E n = (E) this.n.quotient(EuclideanDomain.gcd(this.n, this.d));
+        E d = (E) this.d.quotient(EuclideanDomain.gcd(this.n, this.d));
+        
+        E div = (E) d.unit();
+        n = (E) n.quotient(div);
+        d = (E) d.quotient(div);
+        
+        this.n = n;
+        this.d = d;
+    }
+    
+    public E getNumerator() {
+        return this.n;
+    }
+    
+    public E getDenominator() {
+        return this.d;
+    }
+    
+    //Methods for addition, subtraction, multiplication and division are as expected.
+    @Override
+    public Field add(Field f) {  
+    	if (!(f instanceof Rational<?>)) {
+    		throw new ClassCastException("Attempted to add non-rational to rational.");
+    	}
+    	
+    	if (this.isZero()) {
+    		Field sum = f;
+    		return sum;
+    	}
+    	
+    	if (f.isZero()) {
+    		Field sum = this;
+    		return sum;
+    	}
+    	
+        Rational<E> r = (Rational) f;
+        E num = (E) this.n.multiply(r.getDenominator()).add(this.d.multiply(r.getNumerator()));
+        E den = (E) this.d.multiply(r.getDenominator());
+        
+        Field sum = new Rational(num, den);
+        return sum;
+    }
+    
+    @Override
+    public Field addInvert() {
+    	if (this.isZero()) {
+    		return this;
+    	}
+    	
+        E num = (E) this.n.addInvert();
+        Field inv = new Rational<E>(num, this.d);
+        return inv;
+    }
+    
+    @Override
+    public Field subtract(Field f) {
+        return this.add(f.addInvert());
+    }
+    
+    @Override
+    public Field multiply(Field f) {
+    	if (!(f instanceof Rational<?>)) {
+    		throw new ClassCastException("Attempted to multiply rational by non-rational.");
+    	}
+    	
+    	if (this.isZero()) {
+    		return this;
+    	}
+    	
+    	if (f.isZero()) {
+    		return f;
+    	}
+    	
+        Rational r = (Rational<E>) f;
+        E num = (E) this.n.multiply(r.getNumerator());
+        E den = (E) this.d.multiply(r.getDenominator());
+        
+        Field prod = new Rational<E>(num, den);
+        return prod;
+    }
+    
+    @Override
+    public Field multInvert() {
+        if (this.isZero()) {
+            throw new ArithmeticException("Cannot invert zero.");
+        }
+        
+        Field inv = new Rational<E>(this.d, this.n);
+        return inv;
+    }
+    
+    @Override
+    public Field divide(Field f) {
+        return this.multiply(f.multInvert());
+    }
+    
+    // These methods are required for ordering.
+    @Override
+    public boolean isZero() {
+        return this.n.isZero();
+    }
+    
+    @Override
+    public boolean isPositive() {
+        return this.n.isPositive();
+    }
+    
+    @Override
+    public boolean isNegative() {
+        return this.n.isNegative();
+    }
+    
+    @Override
+    public String toString() {
+        if (this.isZero()) {
+            return "0";
+        }
+        return "(" + this.n + ") / (" + this.d + ")";
+    }
+    
+    // This override makes sure to compare coprime versions of rationals when
+    // evaluating equality.
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        
+        if (o == null) {
+            return false;
+        }
+        
+        if (this.getClass() != o.getClass()) {
+            return false;
+        }
+        
+        Rational r = (Rational<E>) o;
+        
+        this.simplify();
+        r.simplify();
+        
+        if (!this.n.equals(r.getNumerator())) {
+            return false;
+        }
+        
+        if (!this.d.equals(r.getDenominator())) {
+            return false;
+        }
+        
+        return true;
+    }
+}

@@ -1,0 +1,127 @@
+/*
+ * A class of integers in the framework of Euclidean domains is required
+ * for the implementation of rational numbers.
+ */
+package algebra;
+
+import java.util.List;
+import java.util.LinkedList;
+import java.lang.Math;
+
+public class Int extends EuclideanDomain {
+    private int i;
+    
+    public final static Int ONE = new Int(1);
+    public final static Int MINUS_ONE = new Int(-1);
+    public final static Int ZERO = new Int(0);
+    
+    // Constructor and getter.
+    public Int(int j) {
+        this.i = j;
+    }
+    
+    public int getInt() {
+        return this.i;
+    }
+    
+    // Addition and subtraction function as expected.
+    @Override
+    public EuclideanDomain add(EuclideanDomain e) {
+    	if (!(e instanceof Int)) {
+    		throw new ClassCastException("Attempted to add non-integer to integer.");
+    	}
+    	
+        Int j =  (Int) e;
+        int k = this.i + j.getInt();
+        Int d = new Int(k);
+        return d;
+    }
+    
+    @Override
+    public EuclideanDomain addInvert() {
+        return this.multiply(MINUS_ONE);
+    }
+    
+    // The ordering is straightforward as well, as is multiplication.
+    @Override
+    public boolean isZero() {
+        if (this.i == 0) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    @Override
+    public EuclideanDomain unit() {
+        if (this.i > 0) {
+            return ONE;
+        } else if (this.i < 0) {
+            return MINUS_ONE;
+        }
+        
+        return ZERO;
+    }
+    
+    @Override
+    public boolean isPositive() {
+        return this.unit().equals(ONE);
+    }
+    
+    @Override
+    public EuclideanDomain multiply(EuclideanDomain e) {
+    	if (!(e instanceof Int)) {
+    		throw new ClassCastException("Attempted to multiply integer by non-integer.");
+    	}
+    	
+        Int j = (Int) e;
+        int k = this.i * j.getInt();
+        Int d = new Int(k);
+        return d;
+    }
+    
+    // Division returns a list whose first element is the quotient and the second
+    // element is the remainder. The remainder must always be positive.
+    
+    @Override
+    public Pair divide(EuclideanDomain e) {
+    	if (!(e instanceof Int)) {
+    		throw new ClassCastException("Attempted to divide integer by non-integer.");
+    	}
+    	
+        Int j = (Int) e;
+        if (j.isZero()) {
+            throw new ArithmeticException("Integer division by zero attempted.");
+        }
+        
+        EuclideanDomain q = new Int(this.i / j.getInt());
+        if (q.multiply(j).equals(this)) {
+            EuclideanDomain r = this.subtract(q.multiply(e));
+            Pair<Int> d = new Pair(q, r);
+            
+            return d;
+        }
+        
+        if (this.isNegative() && j.isNegative()) {
+            q = q.add(ONE);
+        } else if (this.isNegative() || j.isNegative()) {
+            q = q.subtract(ONE);
+        }
+        
+        EuclideanDomain r = this.subtract(q.multiply(e));
+        Pair<Int> d = new Pair(q, r);
+        
+        return d;
+    }
+    
+    @Override
+    public EuclideanDomain modulus() {
+        Int mod = new Int(Math.abs(this.i));
+        return mod;
+    }
+    
+    @Override
+    public String toString() {
+        return String.valueOf(this.i);
+    }   
+}

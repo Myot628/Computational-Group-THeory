@@ -1,0 +1,23 @@
+/* This class allows easy handling of both the quotient
+ * and remainder when dividing elements of Euclidean domains.
+ */
+
+package algebra;
+
+public class Pair<E extends EuclideanDomain> {
+	private E q;
+	private E r;
+	
+	public Pair(E q, E r) {
+		this.q = q;
+		this.r = r;
+	}
+	
+	public E getQuotient() {
+		return this.q;
+	}
+	
+	public E getRemainder() {
+		return this.r;
+	}
+}
