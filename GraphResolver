@@ -1,0 +1,455 @@
+/*
+ * The GraphResolver class contains all the functionality to simplify
+ * a graph using the appropriate rules. Apart from constructors and getters,
+ * it will have only one public method which will take a graph, reduce it as much
+ * as is possible, and return the resultant graphs.
+ */
+
+package resolver;
+
+import geometry.*;
+import algebra.*;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Iterator;
+
+public class GraphResolver {
+    private Graph gr;
+    private List<Vertex> resolvable;
+    private List<Vertex> redundant;
+    private List<Vertex> reduced;
+    private List<Vertex> loops;
+    private List<Vertex> redLoops;
+    private List<Vertex> zeroLoops;
+    private List<Vertex> tripleGluons;
+    
+    private final static Rational<Int> A = Rational.ONE;
+
+    // The constructor goes through the vertices of the given graph and sorts them appropriately.    
+    public GraphResolver(Graph gr) {
+        this.gr = new Graph(gr);
+        this.resolvable = new LinkedList<>();
+        this.redundant = new LinkedList<>();
+        this.reduced = new LinkedList<>();
+        this.loops = new LinkedList<>();
+        this.redLoops = new LinkedList<>();
+        this.zeroLoops = new LinkedList<>();
+        this.tripleGluons = new LinkedList<>();
+        
+        this.sort();
+    }
+    
+    // The sorting methods keep the categories up to date.
+    private void sort(Vertex v) {
+        this.resolvable.remove(v);
+        this.redundant.remove(v);
+        this.reduced.remove(v);
+        this.loops.remove(v);
+        this.zeroLoops.remove(v);
+        this.redLoops.remove(v);
+        this.tripleGluons.remove(v);
+        
+        if (this.gr.isLoop(v)) {
+                this.loops.add(v);
+            } else if (this.gr.isResolvable(v)) {
+                this.resolvable.add(v);
+            } else if (this.gr.isRedundant(v)) {
+                this.redundant.add(v);
+            } else if (this.gr.isZeroLoop(v)) {
+                this.zeroLoops.add(v);
+            } else if (this.gr.isReducibleLoop(v)) {
+                this.redLoops.add(v);
+            } else if (this.gr.isTripleGluon(v)) {
+            	this.tripleGluons.add(v);
+            } else {
+                this.reduced.add(v);
+            }
+    }
+    
+    private void sort(Vertex... v) {
+        for (int i = 0; i < v.length; i++) {
+            this.sort(v[i]);
+        }
+    }
+    
+    private void sort() {
+        this.loops.clear();
+        this.redundant.clear();
+        this.resolvable.clear();
+        this.reduced.clear();
+        this.zeroLoops.clear();
+        this.redLoops.clear();
+        this.tripleGluons.clear();
+        
+        Iterator<Vertex> it = this.gr.getVertices().iterator();
+        
+        while (it.hasNext()) {
+            this.sort(it.next());
+        }
+    }
+
+    // Getters.
+    public Graph getGraph() {
+        return gr;
+    }
+
+    public List<Vertex> getResolvable() {
+        return resolvable;
+    }
+
+    public List<Vertex> getRedundant() {
+        return redundant;
+    }
+
+    public List<Vertex> getReduced() {
+        return reduced;
+    }
+
+    public List<Vertex> getLoops() {
+        return loops;
+    }
+    
+    public List<Vertex> getZeroLoops() {
+        return this.zeroLoops;
+    }
+    
+    public List<Vertex> getReducibleLoops() {
+        return this.redLoops;
+    }
+    
+    public List<Vertex> getTripleGluons() {
+    	return this.tripleGluons;
+    }
+    
+    // This is the main method of the class, discussed at the top.   
+    public List<Graph> resolve() {        
+        List<Graph> initialOut = new LinkedList<>();
+        
+        if (!this.canResolve()) {
+            initialOut.add(this.gr);
+            return initialOut;
+        }
+   
+        List<Graph> t = this.resolveOnce();
+        
+        if (!canResolve(t)) {
+            initialOut.addAll(t);
+            return initialOut;
+        }
+        
+        List<GraphResolver> r = new LinkedList<>();
+        List<Graph> out = new LinkedList<>();
+        
+        for (int i = 0; i < t.size(); i++) {
+        	r.add(new GraphResolver(t.get(i)));
+        }
+
+        for (GraphResolver res : r) {
+        	out.addAll(res.resolve());
+        }
+        
+        return out;
+    }
+
+    // A supporting method for the main one, essentially one step in the process.    
+    private List<Graph> resolveOnce() {
+        this.removeRedundantVertices();
+        this.simplifyLoops();
+        this.reduceLoops();
+        
+        if (this.zeroLoops.size() > 0) {
+            List<Graph> g = new LinkedList<>();        	
+            g.add(new Graph());
+            return g;
+        }
+        
+        if (this.resolvable == null || this.resolvable.isEmpty()) {
+        	if (this.tripleGluons == null || this.tripleGluons.isEmpty()) {
+                List<Graph> g = new LinkedList<>();   		
+        		g.add(this.gr);
+        		return g;
+        	}
+        	
+            return this.resolveTripleGluon();
+        }
+        
+        return this.resolveBoth();
+    }
+
+    // This method is used to see whether resolving can continue.    
+    private boolean canResolve() {
+        if (this.resolvable.size() > 0) {
+            return true;
+        }
+        
+        if (this.redundant.size() > 0) {
+            return true;
+        }
+        
+        if (this.loops.size() > 0) {
+            return true;
+        }
+        
+        if (this.zeroLoops.size() > 0) {
+            return true;
+        }
+        
+        if (this.redLoops.size() > 0) {
+            return true;
+        }
+        
+        if (this.tripleGluons.size() > 0) {
+        	return true;
+        }
+        
+        return false;
+    }
+    
+    private static boolean canResolve(List<Graph> g) {
+    	for (Graph gr : g) {
+    		GraphResolver r = new GraphResolver(gr);
+    		if (r.canResolve()) {
+    			return true;
+    		}
+    	}
+    	
+    	return false;
+    }
+
+    // Removes the first redundant vertex.
+    private void removeRedundantOnce() {
+        if (this.redundant.isEmpty() || this.redundant == null) {
+            return;
+        }
+        
+        Vertex v = this.redundant.get(0);
+        
+        if (v.numberOfQuarks() == 1) {
+            Vertex u = v.getQuarks().get(0);
+            Vertex w = v.getAntiQuarks().get(0);
+            
+            int j = this.gr.getIndex(u);
+            int k = this.gr.getIndex(w);
+            
+            this.gr.addAntiQuark(j, k);
+            this.gr.removeVertex(v);
+            this.sort(u);
+            this.sort(w);
+            this.redundant.remove(v);
+        } else {
+            Vertex u = v.getGluons().get(0);
+            Vertex w = v.getGluons().get(1);
+            
+            int j = this.gr.getIndex(u);
+            int k = this.gr.getIndex(w);
+            
+            this.gr.addGluon(j, k);
+            this.gr.removeVertex(v);
+            this.sort(u);
+            this.sort(w);
+            this.redundant.remove(v);
+        }
+    }
+    
+    // Supporting method, removes redundant vertices.    
+    private void removeRedundantVertices() {
+        while (this.redundant.size() > 0) {
+            this.removeRedundantOnce();
+        }
+    }
+
+    // Supporting method, simplifies trivial loops.    
+    private void simplifyLoops() {
+        Iterator<Vertex> it = this.loops.iterator();
+        while (it.hasNext()) {
+            Vertex v = it.next();
+            
+            Polynomial t = new Polynomial();
+            Polynomial b = new Polynomial(Rational.ONE);
+                
+            if (v.getGluons().isEmpty()) {               
+                t.addMonomial(1, Rational.ONE);
+            } else {
+                t.addMonomial(2, Rational.ONE);
+                t.addMonomial(0, Rational.MINUS_ONE);
+            }
+                             
+            Rational<Polynomial> f = new Rational(t, b);
+            this.gr.multiply(f);
+            this.gr.removeVertex(v);
+        }
+    }
+    
+    // Supporting method, implements half of the resolving rule.
+    private Graph resolveRemoveGluon() {
+        GraphResolver r = new GraphResolver(new Graph(gr));
+        Graph gr = r.getGraph();
+        
+        Vertex v = r.getResolvable().get(0);
+        Vertex u = v.getGluons().get(0);
+        
+        v.removeGluons(u);
+        u.removeGluons(v);
+        
+        Polynomial t = new Polynomial(A.addInvert());
+        Polynomial b = new Polynomial();
+        
+        b.addMonomial(1, Rational.ONE);
+        
+        Rational<Polynomial> f = new Rational(t, b);
+        gr.setCoefficient((Rational<Polynomial>) gr.getCoefficient().multiply(f));
+        
+        return gr;
+    }
+    
+    // The other half.
+    
+    private Graph resolveTranspose() {
+        GraphResolver r = new GraphResolver(new Graph(this.gr));
+        Graph gr = r.getGraph();
+        
+        Vertex v = r.getResolvable().get(0);
+        Vertex u = v.getGluons().get(0);
+        v.removeGluons(u);
+        u.removeGluons(v);
+        
+        Vertex v1 = new Vertex();
+        Vertex v2 = new Vertex();
+        Vertex u1 = new Vertex();
+        Vertex u2 = new Vertex();
+            
+        gr.addVertex(v1, v2, u1, u2);
+            
+        gr.addQuark(v1, v.getQuarks().get(0));
+        gr.addAntiQuark(v1, u1);
+        gr.addAntiQuark(v2, v.getAntiQuarks().get(0));
+        gr.addQuark(v2, u2);
+        gr.addAntiQuark(u1, u.getAntiQuarks().get(0));
+        gr.addQuark(u2, u.getQuarks().get(0));
+            
+        if (u.getQuarks().size() == 2) {
+            gr.addQuark(u2, v2);
+            u.removeQuarks(u.getQuarks().get(1));
+        } else if (u.getAntiQuarks().size() == 2) {
+            gr.addAntiQuark(u1, v1);
+            u.removeAntiQuarks(u.getAntiQuarks().get(1));
+        }
+            
+        gr.removeVertex(v);
+        gr.removeVertex(u);
+        
+        Polynomial t = new Polynomial(A);
+        Polynomial b = new Polynomial(Rational.ONE);
+        
+        Rational<Polynomial> f = new Rational(t, b);
+        gr.setCoefficient((Rational<Polynomial>) gr.getCoefficient().multiply(f));
+        
+        return gr;
+    }
+    
+    private List<Graph> resolveBoth() {
+        List<Graph> g = new LinkedList<>();
+        
+        g.add(this.resolveTranspose());
+        g.add(this.resolveRemoveGluon());
+        
+        return g;
+    }
+    
+    private void destroyZeroLoops() {
+        if (this.zeroLoops.size()  > 0) {
+            this.gr = new Graph();
+        }
+    }
+    
+    private void reduceLoops() {
+        Iterator<Vertex> it = this.redLoops.iterator();
+        List<Vertex> res = new LinkedList<>();
+        
+        Polynomial t = new Polynomial(A);
+        Polynomial b = new Polynomial(Rational.ONE);
+        
+        Rational<Polynomial> f = new Rational(t, b);
+        
+        while (it.hasNext()) {
+            Vertex v = it.next();
+
+            if (res.contains(v)) {
+                continue;
+            }
+            
+            Vertex u = v.getQuarks().get(0);
+            
+            this.gr.addGluon(v.getGluons().get(0), u.getGluons().get(0));
+            this.gr.removeVertex(v);
+            this.gr.removeVertex(u);
+            
+            this.sort(v.getGluons().get(0), u.getGluons().get(0));
+            res.add(u);
+            this.gr.multiply(f);
+        }
+    }
+    
+    private Graph resolveTripleGluonClockwise() {
+    	GraphResolver r = new GraphResolver(new Graph(this.gr));
+    	Graph gr = r.getGraph();
+    	
+    	Vertex v = r.getTripleGluons().get(0);
+    	Vertex v1 = new Vertex();
+    	Vertex v2 = new Vertex();
+    	Vertex v3 = new Vertex();
+    	
+    	gr.addVertex(v1, v2, v3);
+    	gr.addGluon(v.getGluons().get(0), v1);
+    	gr.addGluon(v.getGluons().get(1), v2);
+    	gr.addGluon(v.getGluons().get(2), v3);
+    	gr.addQuark(v1, v2);
+    	gr.addQuark(v2, v3);
+    	gr.addQuark(v3, v1);
+    	gr.removeVertex(v);
+    	
+    	Polynomial t = new Polynomial(Rational.ONE);
+    	Polynomial b = new Polynomial(A);
+    	
+    	Rational<Polynomial> f = new Rational(t, b);
+    	gr.setCoefficient((Rational<Polynomial>) gr.getCoefficient().multiply(f));
+    	
+    	return gr;
+    }
+    
+    private Graph resolveTripleGluonAntiClockwise() {
+    	GraphResolver r = new GraphResolver(new Graph(this.gr));
+    	Graph gr = r.getGraph();
+    	
+    	Vertex v = r.getTripleGluons().get(0);
+    	Vertex v1 = new Vertex();
+    	Vertex v2 = new Vertex();
+    	Vertex v3 = new Vertex();
+    	
+    	gr.addVertex(v1, v2, v3);
+    	gr.addGluon(v.getGluons().get(0), v1);
+    	gr.addGluon(v.getGluons().get(1), v2);
+    	gr.addGluon(v.getGluons().get(2), v3);
+    	gr.addAntiQuark(v1, v2);
+    	gr.addAntiQuark(v2, v3);
+    	gr.addAntiQuark(v3, v1);
+    	gr.removeVertex(v);
+    	
+    	Polynomial t = new Polynomial(Rational.MINUS_ONE);
+    	Polynomial b = new Polynomial(A);
+    	
+    	Rational<Polynomial> f = new Rational(t, b);
+    	gr.setCoefficient((Rational<Polynomial>) gr.getCoefficient().multiply(f));
+    	
+    	return gr;
+    }
+    
+    private List<Graph> resolveTripleGluon() {
+    	List<Graph> g = new LinkedList<>();
+    	
+    	g.add(this.resolveTripleGluonClockwise());
+    	g.add(this.resolveTripleGluonAntiClockwise());
+    	
+    	return g;
+    }
+}
